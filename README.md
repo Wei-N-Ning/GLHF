@@ -1,4 +1,4 @@
 GLHF
 ====
 
-An external **** framework based on pyopengl
+An external **** framework based on pyopengl, targeting windows x64.
