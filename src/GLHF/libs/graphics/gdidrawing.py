@@ -36,113 +36,86 @@ def drawSimpleText(hDc, text, x, y):
 def drawSoldiers(hDc, dataContainer, globalLock, cX, cY, lineWidth=1):
     """
     win32gui.Rectangle(hDc, left, top, right, bottom)
+    
+    draw the box esp and the minimap
     """
     globalLock.acquire()
     viewTransform = dataContainer.viewMatrix
     viewOrigin = dataContainer.viewOrigin
+    viewForwardVec = dataContainer.viewForwardVec
     fovY = dataContainer.fovY
     fovX = dataContainer.fovX
-    aspect = dataContainer.aspectRatio
+    #aspect = dataContainer.aspectRatio
     globalLock.release()
     
-    #viewTransform.set(3, 3, 1.0)
     projM = getProjectionMatrixBF3(0.06, 10000.0, fovX, fovY)
-    viewProjM = viewTransform.multTo(projM)
-
-    for soldier in dataContainer.soldiers:
-        globalLock.acquire()
-        isValid = soldier.isValid()
-        posVec4 = soldier.posVec4
-        isOccluded = soldier.occluded
-        stance = soldier.stance
-        hp = soldier.health
-        globalLock.release()
+    
+    # ============== initialize the minimap ================
+    centerX, centerY = 200, 200
+    boundaryX, boundaryY = 160, 160
+    top, bottom = centerY - boundaryY, centerY + boundaryY
+    left, right = centerX - boundaryX, centerX + boundaryX
+    hPen = win32gui.CreatePen(win32con.PS_SOLID, 2, COLOR_BLUE)
+    win32gui.SelectObject(hDc, hPen)
+    win32gui.Rectangle(hDc, left, top, right, bottom)
+    drawCrossHair(hDc, centerX, centerY, size=159, lineWidth=2, color=COLOR_BLUE)
+    # ======================================================
+    
+    # the consumer starts up - consuming n soldier objects at a time
+    # n equals to the approximate size of the queue at that point
+    for i in range(dataContainer.soldiers.qsize()):
         
-        if not isValid:
+        soldier = dataContainer.soldiers.get()
+
+        # strictly speaking the soldier object can not be invalid (due to the producer-consumer
+        # model), but just to be on the safe side...
+        if not soldier.isValid():
             continue
         
-        distanceToViewOrigin = viewOrigin.distanceTo(posVec4)
+        distanceToViewOrigin = viewOrigin.distanceTo(soldier.posVec4)
         
-        color = COLOR_RED if isOccluded else COLOR_GREEN
+        color = COLOR_RED if soldier.occluded else COLOR_GREEN
         
         hPen = win32gui.CreatePen(win32con.PS_SOLID, lineWidth, color)
         win32gui.SelectObject(hDc, hPen)
         
-        posVP = posVec4.multToMat(viewProjM)
-        if abs(posVP.w) < 0.001 or posVP.z > 0:
-            continue
+        # here is the same logic as in BF3, applies to other MVP transformation as well
+        posV = soldier.posVec4.multToMat(viewTransform)
+        posVP = posV.multToMat(projM)
         
-        scrX = int(cX * (1 + posVP.x / posVP.w))
-        scrY = int(cY * (1 - posVP.y / posVP.w))
+        if abs(posVP.w) > 0.001 and posVP.z <= 0:
+            # ============== draw soldier box esp ===============
+            # important! this is different from BF3 (d3d)!!
+            scrX = int(cX * (1 + posVP.x / posVP.w))
+            scrY = int(cY * (1 - posVP.y / posVP.w))
+            # draw text
+            #text = "%d H%d" % (int(distanceToViewOrigin), int(soldier.health))
+            #win32gui.DrawText(hDc, text, len(text), (scrX, scrY, scrX+150, scrY+20), win32con.DT_TOP|win32con.DT_LEFT)
+            # calculate the esp box size!
+            w, h = 4, 4#getWidthHeight(distanceToViewOrigin, soldier.stance)
+            win32gui.Rectangle(hDc, scrX, scrY, scrX-w, scrY-h)
+            # ===================================================
         
-        text = "%d H%d" % (int(distanceToViewOrigin), int(hp))
-        textLength = len(text)
-        win32gui.DrawText(hDc, 
-                          text,
-                          textLength,
-                          (scrX, scrY, scrX+150, scrY+20),
-                          win32con.DT_TOP | win32con.DT_LEFT
-                          )
-        
-        w, h = getWidthHeight(distanceToViewOrigin, stance)
-        
-        win32gui.Rectangle(hDc, scrX, scrY, scrX-w, scrY-h)
+        if posV.w > 0.001:
+            # =========== draw soldier minimap spot ===========
+            # calculate the planar coord while compensate for the viewing angle
+            dx = posV.x / posV.w
+            cosA = viewForwardVec.dotProduct(vector.Vector4(viewForwardVec.x, 0.0, viewForwardVec.z, 0.0).normalize())
+            dy = posV.z / posV.w / abs(cosA)
+            # limit the drawing to the defined minimap region
+            dx = int(dx / 1.0 + centerX)
+            dy = int(dy / 1.0 + centerY)
+            if dx < left: dx = left
+            if dx > right:dx = right
+            if dy < top : dy = top
+            if dy > bottom:dy = bottom
+            # draw spot
+            pColor = COLOR_RED if soldier.occluded else COLOR_GREEN
+            hPen = win32gui.CreatePen(win32con.PS_SOLID, lineWidth, pColor)
+            win32gui.SelectObject(hDc, hPen)
+            win32gui.Rectangle(hDc, dx, dy, dx+2, dy+2)
+            # =================================================
 
-
-def drawMiniMapBoundary(hDc, lineWidth=2):
-    centerX, centerY = 200, 200
-    boundaryX, boundaryY = 160, 160
-    top, bottom = centerY - boundaryY, centerY + boundaryY
-    left, right = centerX - boundaryX, centerX + boundaryX
-    hPen = win32gui.CreatePen(win32con.PS_SOLID, lineWidth, COLOR_BLUE)
-    win32gui.SelectObject(hDc, hPen)
-    win32gui.Rectangle(hDc, left, top, right, bottom)
-    drawCrossHair(hDc, centerX, centerY, size=159, lineWidth=2, color=COLOR_BLUE)
-    
-def drawSoldiersMiniMap(hDc, dataContainer, globalLock, lineWidth=2):
-    centerX, centerY = 200, 200
-    boundaryX, boundaryY = 160, 160
-    top, bottom = centerY - boundaryY, centerY + boundaryY
-    left, right = centerX - boundaryX, centerX + boundaryX
-    
-    globalLock.acquire()
-    viewTransform = dataContainer.viewMatrix
-    viewForwardVec = dataContainer.viewForwardVec
-    globalLock.release()
-
-    for soldier in dataContainer.soldiers:
-        globalLock.acquire()
-        posVec4 = soldier.posVec4
-        isValid = soldier.isValid()
-        occl = soldier.occluded
-        globalLock.release()
-
-        if not isValid:
-            continue
-        
-        posV = posVec4.multToMat(viewTransform)
-        #posV.x *= -1
-        if posV.w < 0.001:
-            continue
-        
-        dx = posV.x / posV.w
-        cosA = viewForwardVec.dotProduct(vector.Vector4(viewForwardVec.x, 0.0, viewForwardVec.z, 0.0).normalize())
-        dy = posV.z / posV.w / abs(cosA)
-        
-        dx = int(dx / 1.0 + centerX)
-        dy = int(dy / 1.0 + centerY)
-        
-        if dx < left: dx = left
-        if dx > right:dx = right
-        if dy < top : dy = top
-        if dy > bottom:dy = bottom
-        
-        pColor = COLOR_RED if occl else COLOR_GREEN
-        hPen = win32gui.CreatePen(win32con.PS_SOLID, lineWidth, pColor)
-        win32gui.SelectObject(hDc, hPen)
-
-        win32gui.Rectangle(hDc, dx, dy, dx+2, dy+2)
-         
 def cot(x):
     return 1/math.tan(x)
 

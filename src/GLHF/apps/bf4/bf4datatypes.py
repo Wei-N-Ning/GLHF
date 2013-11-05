@@ -1,3 +1,4 @@
+import Queue
 
 
 class Soldier(object):
@@ -26,7 +27,7 @@ class Soldier(object):
         return self.address != other.address
     
     def isValid(self):
-        return self.address != 0x0 and self.posVec4 != None and self.velVec4 != None and self.health > 0
+        return self.address != 0x0 and self.posVec4 != None and self.velVec4 != None and self.health > 0.1
     
     def toString(self):
         if self.address == 0x0:
@@ -53,6 +54,9 @@ class DataContainer(object):
         self.viewForwardVec = None
         
         self.localPlayer = Soldier()
-        self.soldiers = [Soldier() for i in range(64)]
+        
+        # maxsize is an integer that sets the upperbound limit on the number of items that can 
+        # be placed in the queue. Insertion will block once this size has been reached
+        self.soldiers = Queue.Queue(maxsize=64)
         
 

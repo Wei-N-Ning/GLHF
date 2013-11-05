@@ -52,6 +52,8 @@ import time
 from GLHF.libs.memory import rpm
 from GLHF.libs.datatypes import matrix
 
+import bf4datatypes
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -103,7 +105,7 @@ class BF4DataFeeder(object):
         """
         fovY = self.rpm.readFloat(self.cfg.RenderViewAddress + 0xB4)
         fovX = self.rpm.readFloat(self.cfg.RenderViewAddress + 0x250)
-        aspectRatio = self.rpm.readFloat(self.cfg.RenderViewAddress + 0xC4)
+        #aspectRatio = self.rpm.readFloat(self.cfg.RenderViewAddress + 0xC4)
         firstPersonTransform = self.rpm.readMat4(self.cfg.RenderViewAddress + 0x40)
         viewMatrix = matrix.getViewMatrixFromFirstPersonTransform(firstPersonTransform)
         viewOrigin = firstPersonTransform.getColumnVector(3)
@@ -113,66 +115,74 @@ class BF4DataFeeder(object):
         self.lock.acquire()
         self.ctn.fovY = fovY
         self.ctn.fovX = fovX
-        self.ctn.aspectRatio = aspectRatio
+        #self.ctn.aspectRatio = aspectRatio
         self.ctn.viewMatrix = viewMatrix
         self.ctn.viewOrigin = viewOrigin
         self.ctn.viewForwardVec = viewForwardVec
-        self.ctn
         self.lock.release()
         
     def _populateSoldierArray(self):
+        
+        # the producer starts up...
         arrayAddress = self.cfg.PlayerPtrArrayAddress
         myTeamId = self.rpm.readUInt(self.cfg.LocalPlayerAddress + 0xCBC)
+        
+        # there are maximum 64 players in a round
         for index in range(64):
+            
+            # get the player address (ClientSoldier)
             entryAddress = arrayAddress+index*8
-            # address & teamId (isEnemy) & vehicle & CSE
+            
+            # not all the ptr is valid, be careful
+            # as soon as a player dies, its pointer is NULL-ed
             soldierAddress = self.rpm.readUInt64(entryAddress)   
             if soldierAddress == 0x0:
                 continue
+            
+            # teamId (isEnemy) & vehicle & CSE
+            # to save performance, do not handle friendly players
             teamId = self.rpm.readUInt(soldierAddress + 0xCBC)
             if teamId == myTeamId:
                 continue
+            
+            # check if the controllable is a vehicle,
+            # there is currently no way to handle vehicle....
             vehicle = self.rpm.readUInt64(soldierAddress + 0xDB0)
             if vehicle != 0x0:
                 continue
+            
+            # ClientSoldierEntity, same concept as in BF3, ensure it is a valid pointer
             cse = self.rpm.readUInt64(soldierAddress + 0xDC0)
             if cse == 0x0:
                 continue
-            # replicated controller
+            
+            # ========= populating Soldier structure ==========
+            soldier = bf4datatypes.Soldier()
+            # replicated controller, same concept as in BF3
             repCon = self.rpm.readUInt64(cse + 0x490)
             # name
-            name = self.rpm.readStr64(soldierAddress + 0x40)
+            soldier.address = soldierAddress
+            soldier.name = self.rpm.readStr64(soldierAddress + 0x40)
             # health
             healthCompoundAddress = self.rpm.readUInt64(cse + 0x140)
-            health = self.rpm.readFloat(healthCompoundAddress + 0x38)
+            soldier.health = self.rpm.readFloat(healthCompoundAddress + 0x38)
             # occl
-            occluded = bool(self.rpm.readByte(cse + 0x591))
-            # pos vector
-            posVec4 = self.rpm.readVec4Position(repCon + 0x30)
-            posVec4.w = 1.0
+            soldier.occluded = bool(self.rpm.readByte(cse + 0x591))
+            # pos vector, make sure its w element is 1.0, required by d3d convention
+            soldier.posVec4 = self.rpm.readVec4Position(repCon + 0x30)
+            soldier.posVec4.w = 1.0
             # vel vector
-            velVec4 = self.rpm.readVec4Direction(repCon + 0x50)
-            # stance
-            stance = self.rpm.readUInt(repCon + 0x80)
+            soldier.velVec4 = self.rpm.readVec4Direction(repCon + 0x50)
+            # stance: 0-stand, 1-nail, 2-crouch
+            soldier.stance = self.rpm.readUInt(repCon + 0x80)
+            # =================================================
             
             # set values
-            self.lock.acquire()
             if soldierAddress == self.cfg.LocalPlayerAddress:
-                self.ctn.localPlayer.address = soldierAddress
-                self.ctn.localPlayer.teamId = teamId
-                self.ctn.localPlayer.name = name
-                self.ctn.localPlayer.health = health
-                self.ctn.localPlayer.posVec4 = posVec4
-                self.ctn.localPlayer.velVec4 = velVec4
-                self.ctn.localPlayer.stance = stance
+                # use thread lock
+                self.lock.acquire()
+                self.ctn.localPlayer = soldier
+                self.lock.release()
             else:
-                self.ctn.soldiers[index].address = soldierAddress
-                self.ctn.soldiers[index].teamId = teamId
-                self.ctn.soldiers[index].isEnemy = True
-                self.ctn.soldiers[index].name = name
-                self.ctn.soldiers[index].health = health
-                self.ctn.soldiers[index].posVec4 = posVec4
-                self.ctn.soldiers[index].velVec4 = velVec4
-                self.ctn.soldiers[index].occluded = occluded
-                self.ctn.soldiers[index].stance = stance
-            self.lock.release()
+                # Queue object has the "blocking" ability
+                self.ctn.soldiers.put(soldier)

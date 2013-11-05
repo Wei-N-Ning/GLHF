@@ -30,8 +30,6 @@ def onPaint(hwnd, msg, wp, lp):
     gdidrawing.setTextColor(hDc)
     
     gdidrawing.drawSoldiers(hDc, dataContainer, globalLock, centerX, centerY)
-    gdidrawing.drawMiniMapBoundary(hDc)
-    gdidrawing.drawSoldiersMiniMap(hDc, dataContainer, globalLock)
     
     win32gui.EndPaint(hwnd, ps)
     return 0
