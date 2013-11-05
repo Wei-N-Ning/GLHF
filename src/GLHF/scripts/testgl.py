@@ -9,13 +9,11 @@ from OpenGL.GLU import *
 from OpenGL.GL import *
 import sys
 
-name = 'ball_glut'
-
 def main():
     glutInit(sys.argv)
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_STENCIL)
     glutInitWindowSize(400,400)
-    glutCreateWindow(name)
+    glutCreateWindow("demo project")
 
     glClearColor(0.,0.,0.,1.)
     glShadeModel(GL_SMOOTH)
@@ -42,11 +40,13 @@ def main():
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+    # ---------------------------------
     glPushMatrix()
     color = [1.0,0.,0.,1.]
     glMaterialfv(GL_FRONT,GL_DIFFUSE,color)
     glutSolidSphere(2,20,20)
     glPopMatrix()
+    # ---------------------------------
     glutSwapBuffers()
     return
 
