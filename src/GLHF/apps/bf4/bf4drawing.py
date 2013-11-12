@@ -46,6 +46,8 @@ def drawSoldiers(hDc, dataContainer, globalLock, cX, cY, lineWidth=1):
     viewForwardVec = dataContainer.viewForwardVec
     fovY = dataContainer.fovY
     fovX = dataContainer.fovX
+    
+    # i'm using the old bf3 worldToScreen calculation, so do not need the aspect ratio any more
     #aspect = dataContainer.aspectRatio
     globalLock.release()
     

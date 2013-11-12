@@ -46,7 +46,6 @@ else:
 """
 
 import sys
-import threading
 import time
 
 from GLHF.libs.memory import rpm
@@ -105,6 +104,8 @@ class BF4DataFeeder(object):
         """
         fovY = self.rpm.readFloat(self.cfg.RenderViewAddress + 0xB4)
         fovX = self.rpm.readFloat(self.cfg.RenderViewAddress + 0x250)
+        
+        # i'm using the old bf3 worldToScreen calculation, so do not need the aspect ratio any more
         #aspectRatio = self.rpm.readFloat(self.cfg.RenderViewAddress + 0xC4)
         firstPersonTransform = self.rpm.readMat4(self.cfg.RenderViewAddress + 0x40)
         viewMatrix = matrix.getViewMatrixFromFirstPersonTransform(firstPersonTransform)
@@ -115,6 +116,8 @@ class BF4DataFeeder(object):
         self.lock.acquire()
         self.ctn.fovY = fovY
         self.ctn.fovX = fovX
+        
+        # i'm using the old bf3 worldToScreen calculation, so do not need the aspect ratio any more
         #self.ctn.aspectRatio = aspectRatio
         self.ctn.viewMatrix = viewMatrix
         self.ctn.viewOrigin = viewOrigin
@@ -160,6 +163,8 @@ class BF4DataFeeder(object):
             soldier = bf4datatypes.Soldier()
             # replicated controller, same concept as in BF3
             repCon = self.rpm.readUInt64(cse + 0x490)
+            
+            #@TODO: figure out why this could happen??!!
             if repCon > 0xF0000000:
                 continue
             # name
