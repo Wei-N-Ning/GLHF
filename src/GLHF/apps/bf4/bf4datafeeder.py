@@ -160,6 +160,8 @@ class BF4DataFeeder(object):
             soldier = bf4datatypes.Soldier()
             # replicated controller, same concept as in BF3
             repCon = self.rpm.readUInt64(cse + 0x490)
+            if repCon > 0xF0000000:
+                continue
             # name
             soldier.address = soldierAddress
             soldier.name = self.rpm.readStr64(soldierAddress + 0x40)

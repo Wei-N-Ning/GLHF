@@ -3,12 +3,11 @@ import threading
 import win32con
 import win32gui
 
-from GLHF import config
 from GLHF.apps import base
-from GLHF.libs.graphics import gdidrawing
-from GLHF.libs.memory import rpm
-from GLHF.apps.bf4 import bf4datatypes
-from GLHF.apps.bf4 import bf4datafeeder
+
+import bf4datatypes
+import bf4datafeeder
+import bf4drawing
 
 import logging
 logger = logging.getLogger(__name__)
@@ -22,14 +21,15 @@ dataContainer = bf4datatypes.DataContainer()
 app = BF4Application("BF4EH", dataContainer, globalLock)
 feeder = bf4datafeeder.BF4DataFeeder(app)
 centerX = (app.cfg.windowRight - app.cfg.windowLeft)/2
-centerY = (app.cfg.windowBottom - app.cfg.windowTop)/2
+centerY = (app.cfg.windowBottom - app.cfg.windowTop)/2 + 10
 
 def onPaint(hwnd, msg, wp, lp):
     hDc, ps=win32gui.BeginPaint(hwnd)
     win32gui.SetGraphicsMode(hDc, win32con.GM_ADVANCED)
-    gdidrawing.setTextColor(hDc)
+    bf4drawing.setTextColor(hDc)
     
-    gdidrawing.drawSoldiers(hDc, dataContainer, globalLock, centerX, centerY)
+    bf4drawing.drawCrossHair(hDc, centerX, centerY, size=10)
+    bf4drawing.drawSoldiers(hDc, dataContainer, globalLock, centerX, centerY)
     
     win32gui.EndPaint(hwnd, ps)
     return 0
