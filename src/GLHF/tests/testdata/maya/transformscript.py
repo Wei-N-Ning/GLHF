@@ -1,5 +1,9 @@
+"""
+To test the most basic transform 2d concept (for minimap)
+"""
+
 import sys
-sys.path.append("D:\Git\git\GLHF\src")
+sys.path.append("D:\\Git\\git\\GLHF\\src")
 
 import math
 

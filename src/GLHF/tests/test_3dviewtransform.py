@@ -1,5 +1,10 @@
 """
 This unit test module requires \testdata\maya\test3dviewtransform.ma
+
+The test here covers the basic view transform matrix calculation concept and the tricks in performing
+vector/matrix multiplication:
+1) if using the msdn-d3d/3dgep tutorial, the matrix must be transposed before postmult
+2) if the world coord system is right-handed, the resulting position vector's z element must be inverted
 """
 
 import sys
