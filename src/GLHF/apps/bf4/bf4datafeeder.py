@@ -100,7 +100,7 @@ class BF4DataFeeder(object):
         @note: the address RenderViewAddress + 0x40 is in fact FirstPersonTransform, same as 
                BF3. It is a compound structure holding the view vectors and the view location
                but NOT a view matrix!!
-               The code must convert this transform into a legit view matrix. 
+               The code must convert this transform into a real view matrix. 
         """
         fovY = self.rpm.readFloat(self.cfg.RenderViewAddress + 0xB4)
         fovX = self.rpm.readFloat(self.cfg.RenderViewAddress + 0x250)
@@ -148,42 +148,16 @@ class BF4DataFeeder(object):
             if teamId == myTeamId:
                 continue
             
-            # check if the controllable is a vehicle,
-            # there is currently no way to handle vehicle....
-            vehicle = self.rpm.readUInt64(soldierAddress + 0xDB0)
-            if vehicle != 0x0:
+            # check if the controllable is a vehicle
+            vehicleDataBlock = self.rpm.readUInt64(soldierAddress + 0xDB0)
+            if vehicleDataBlock != 0x0:
+                soldier = self._readVehicle(soldierAddress, vehicleDataBlock)
+            else:
+                soldier = self._readSoldier(soldierAddress)
+
+            if soldier == None:
                 continue
-            
-            # ClientSoldierEntity, same concept as in BF3, ensure it is a valid pointer
-            cse = self.rpm.readUInt64(soldierAddress + 0xDC0)
-            if cse == 0x0:
-                continue
-            
-            # ========= populating Soldier structure ==========
-            soldier = bf4datatypes.Soldier()
-            # replicated controller, same concept as in BF3
-            repCon = self.rpm.readUInt64(cse + 0x490)
-            
-            #@TODO: figure out why this could happen??!!
-            if repCon > 0xF0000000:
-                continue
-            # name
-            soldier.address = soldierAddress
-            soldier.name = self.rpm.readStr64(soldierAddress + 0x40)
-            # health
-            healthCompoundAddress = self.rpm.readUInt64(cse + 0x140)
-            soldier.health = self.rpm.readFloat(healthCompoundAddress + 0x38)
-            # occl
-            soldier.occluded = bool(self.rpm.readByte(cse + 0x591))
-            # pos vector, make sure its w element is 1.0, required by d3d convention
-            soldier.posVec4 = self.rpm.readVec4Position(repCon + 0x30)
-            soldier.posVec4.w = 1.0
-            # vel vector
-            soldier.velVec4 = self.rpm.readVec4Direction(repCon + 0x50)
-            # stance: 0-stand, 1-nail, 2-crouch
-            soldier.stance = self.rpm.readUInt(repCon + 0x80)
-            # =================================================
-            
+                
             # set values
             if soldierAddress == self.cfg.LocalPlayerAddress:
                 # use thread lock
@@ -193,3 +167,64 @@ class BF4DataFeeder(object):
             else:
                 # Queue object has the "blocking" ability
                 self.ctn.soldiers.put(soldier)
+        
+    def _readSoldier(self, soldierAddress):
+        """
+        The logic of this method is similar to that of ehf-bf3's
+        
+        @param soldierAddress: a.k.a ClientPlayerEntity, PlayerEntity, SoliderEntity....
+        @type  soldierAddress: int
+        """
+        # ClientSoldierEntity, same concept as in BF3, ensure it is a valid pointer
+        cse = self.rpm.readUInt64(soldierAddress + 0xDC0)
+        if cse == 0x0:
+            return None
+        
+        # ========= populating Soldier structure ==========
+        soldier = bf4datatypes.Soldier()
+        # replicated controller, same concept as in BF3
+        repCon = self.rpm.readUInt64(cse + 0x490)
+        
+        #@TODO: figure out why this could happen??!!
+        if repCon > 0xF0000000:
+            return None
+        
+        # name
+        soldier.address = soldierAddress
+        soldier.name = self.rpm.readStr64(soldierAddress + 0x40)
+        # health
+        healthCompoundAddress = self.rpm.readUInt64(cse + 0x140)
+        soldier.health = self.rpm.readFloat(healthCompoundAddress + 0x38)
+        # occl
+        soldier.occluded = bool(self.rpm.readByte(cse + 0x591))
+        # pos vector, make sure its w element is 1.0, required by d3d convention
+        soldier.posVec4 = self.rpm.readVec4Position(repCon + 0x30)
+        soldier.posVec4.w = 1.0
+        # vel vector
+        soldier.velVec4 = self.rpm.readVec4Direction(repCon + 0x50)
+        # stance: 0-stand, 1-nail, 2-crouch
+        soldier.stance = self.rpm.readUInt(repCon + 0x80)
+        # =================================================        
+        
+        return soldier
+    
+    def _readVehicle(self, soldierAddress, vehicleDataBlock):
+        """
+        @param vehicleDataBlock: (don't know what it is supposed to be called) this represents 
+                                 the object contains the vehicle controllable entity (again, not
+                                 sure how to call that) 
+        @type  vehicleDataBlock: int
+        """
+        # the block contains the vehicle position etc.
+        vehicleControl = self.rpm.readUInt64(vehicleDataBlock + 0x238)
+        soldier = bf4datatypes.Soldier()
+        soldier.address = soldierAddress
+        soldier.name = "_veh_" #@TODO: rpm the vehicle id then the mapped type
+        soldier.isVehicle = True
+        #soldier.health = 999.0 #@TODO: rpm this
+        #soldier.posVec4 = self.rpm.readVec4Position(vehicleControl + 0xA0)
+        #soldier.posVec4.w = 1.0
+        #soldier.velVec4 = self.rpm.readVec4Direction(vehicleControl + 0x280)
+        return soldier
+        
+        

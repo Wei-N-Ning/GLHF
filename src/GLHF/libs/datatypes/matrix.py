@@ -75,10 +75,6 @@ def getViewMatrixFromFirstPersonTransform(firstPersonTransform):
     
     @param firstPersonTransform: the original C_MATRIX
     @type  firstPersonTransform: L{C_MATRIX}
-    
-    @param rightInverted: if True, this function will take the #2 column vector as the left-vector
-                          and invert it to get the right-vector
-    @type  rightInverted: bool
     """
     right = firstPersonTransform.getColumnVector(0)
     up = firstPersonTransform.getColumnVector(1)
@@ -109,3 +105,34 @@ def getViewMatrixFromFirstPersonTransform(firstPersonTransform):
     
     return viewMatrix
 
+def getViewMatrixFromViewAxisAndPosition(x, y, z, position):
+    """
+    For IW/COD series
+    """
+    right = x
+    up = y
+    forward = z
+
+    viewMatrix = Matrix44()
+    
+    viewMatrix.set(0, 0, right.x)
+    viewMatrix.set(0, 1, up.x)
+    viewMatrix.set(0, 2, forward.x)
+    viewMatrix.set(0, 3, 0.0)
+    
+    viewMatrix.set(1, 0, right.y)
+    viewMatrix.set(1, 1, up.y)
+    viewMatrix.set(1, 2, forward.y)
+    viewMatrix.set(1, 3, 0.0)
+    
+    viewMatrix.set(2, 0, right.z)
+    viewMatrix.set(2, 1, up.z)
+    viewMatrix.set(2, 2, forward.z)
+    viewMatrix.set(2, 3, 0.0)
+    
+    viewMatrix.set(3, 0, -1.0*position.dotProduct(right))
+    viewMatrix.set(3, 1, -1.0*position.dotProduct(up))
+    viewMatrix.set(3, 2, -1.0*position.dotProduct(forward))
+    viewMatrix.set(3, 3, 1.0)
+    
+    return viewMatrix

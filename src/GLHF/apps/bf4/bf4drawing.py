@@ -11,6 +11,7 @@ from GLHF.libs.datatypes import vector
 COLOR_RED = win32api.RGB(255, 0, 0)
 COLOR_GREEN = win32api.RGB(0, 255, 0)
 COLOR_BLUE = win32api.RGB(0, 0, 255)
+COLOR_YELLOW = win32api.RGB(255, 215, 10)
 
 MAX_TEXT_WIDTH = 150
 MAX_TEXT_HEIGHT = 20
@@ -77,9 +78,13 @@ def drawSoldiers(hDc, dataContainer, globalLock, cX, cY, lineWidth=1):
         
         distanceToViewOrigin = viewOrigin.distanceTo(soldier.posVec4)
         
+        # visible enemy footman: Green
         color = COLOR_RED if soldier.occluded else COLOR_GREEN
         
-        hPen = win32gui.CreatePen(win32con.PS_SOLID, lineWidth, color)
+        if soldier.isVehicle:
+            hPen = win32gui.CreatePen(win32con.PS_SOLID, 2, COLOR_YELLOW)
+        else:
+            hPen = win32gui.CreatePen(win32con.PS_SOLID, lineWidth, color)
         win32gui.SelectObject(hDc, hPen)
         
         # here is the same logic as in BF3, applies to other MVP transformation as well
@@ -95,16 +100,14 @@ def drawSoldiers(hDc, dataContainer, globalLock, cX, cY, lineWidth=1):
             text = "%d(%d)" % (int(distanceToViewOrigin), int(soldier.health))
             win32gui.DrawText(hDc, text, len(text), (scrX, scrY, scrX+68, scrY+14), win32con.DT_TOP|win32con.DT_LEFT)
             # calculate the esp box size!
-            
             # the reason I don't use the calculation is the scope will disturb the esp box
-            w, h = 4,4#getWidthHeight(distanceToViewOrigin, soldier.stance)
-            win32gui.Rectangle(hDc, scrX-w/2, scrY-h, scrX+w/2, scrY)
+            if soldier.isVehicle:
+                w, h = 6,6
+                win32gui.Rectangle(hDc, scrX-w/2, scrY-h, scrX+w/2, scrY)
+            else:
+                w, h = 4,4#getWidthHeight(distanceToViewOrigin, soldier.stance)
+                win32gui.Rectangle(hDc, scrX-w/2, scrY-h, scrX+w/2, scrY)
             # ===================================================
-            
-            # ============== draw soldier hp indicator ==============
-            
-            # =======================================================
-            
             
         if posV.w > 0.001:
             # =========== draw soldier minimap spot ===========

@@ -103,6 +103,7 @@ class RPM(object):
         self.read(address, self.byteBuffer, self.byteBufferSize)
         return self.byteBuffer.value
     
+    
 
 if __name__ == "__main__":
     hProcess = kernel32.OpenProcess(0x10, False, 5620)

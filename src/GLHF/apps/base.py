@@ -36,7 +36,14 @@ class BaseApplication(object):
         self.ctn = dataContainer
         self.lock = globalLock
         self.cfg = config.Config.fromFile(self.CONFIG_FILE)
+        self.addUserConfig()
         self.renderInterval = 1.0/(self.FPS*2.0)
+    
+    def addUserConfig(self):
+        """
+        Client code can implement this method to customize the config structure
+        """
+        pass
     
     def openProcess(self):
         hProcess = kernel32.OpenProcess(self.PROCESS_ALL_ACCESS, False, self.cfg.pid)
@@ -45,7 +52,7 @@ class BaseApplication(object):
             raise OpenProcessError(self.cfg.pid, self.PROCESS_ALL_ACCESS, lastErrorCode)
         return hProcess
         
-    def createWindowClass(self, wndproc):
+    def createWindowClass(self, wndproc, bgColorBrush=win32con.COLOR_WINDOW+1):
         """
         Create and register the window class structure, returning the class atom.
         
@@ -59,7 +66,7 @@ class BaseApplication(object):
         wc = win32gui.WNDCLASS()
         wc.lpszClassName = self.appName
         wc.style = win32con.CS_GLOBALCLASS|win32con.CS_VREDRAW | win32con.CS_HREDRAW
-        wc.hbrBackground = win32con.COLOR_WINDOW + 1
+        wc.hbrBackground = bgColorBrush
         wc.lpfnWndProc = wndproc
         classAtom=win32gui.RegisterClass(wc)       
         return classAtom
@@ -92,6 +99,20 @@ class BaseApplication(object):
                                             win32api.RGB(255, 255, 255), 
                                             255, 
                                             win32con.LWA_COLORKEY)
+        return hwnd
+    
+    def createWindowClassic(self, classAtom):
+        hwnd = win32gui.CreateWindow(classAtom,
+                                     "QQ2013 Xmas",
+                                     self.WINDOW_STYLE,
+                                     self.cfg.windowX,
+                                     self.cfg.windowY,
+                                     self.cfg.windowWidth,
+                                     self.cfg.windowHeight,
+                                     0,
+                                     0,
+                                     0,
+                                     None)
         return hwnd
     
     def render(self, hwnd, classAtom):
