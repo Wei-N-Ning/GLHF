@@ -60,6 +60,54 @@ class Matrix44(object):
         return newMat4
 
 
+class Matrix2D(object):
+    
+    def __init__(self):
+        self._data = [0.0, 0.0, 0.0, 0.0]
+        
+    def get(self, row, column):
+        return self._data[row * 2 + column]
+    
+    def set(self, row, column, value):
+        self._data[row * 2 + column] = value
+        
+    @staticmethod
+    def fromRotation(rad):
+        """
+        To transform a point to the new position in the system
+        """
+        mat = Matrix2D()
+        mat.set(0, 0, math.cos(rad))
+        mat.set(0, 1, -math.sin(rad))
+        mat.set(1, 0, math.sin(rad))
+        mat.set(1, 1, math.cos(rad))
+        return mat
+    
+    @staticmethod
+    def fromRotationInverse(rad):
+        """
+        To transform a point in the system back to the world system
+        """
+        mat = Matrix2D()
+        mat.set(0, 0, math.cos(rad))
+        mat.set(0, 1, math.sin(rad))
+        mat.set(1, 0, -math.sin(rad))
+        mat.set(1, 1, math.cos(rad))
+        return mat
+    
+    def toString(self):
+        return '\n'.join([' '.join(["%.3f"%self.get(i,j) for j in range(2)]).ljust(6) for i in range(2)]) 
+    
+    def __str__(self):
+        return self.toString()
+    
+    def copy(self):
+        mat = Matrix2D()
+        for i in self._data:
+            mat._data[0] = self._data[0]
+        return mat
+    
+
 def getIdMatrix44():
     matrix44 = Matrix44()
     for index in range(4):
@@ -105,14 +153,10 @@ def getViewMatrixFromFirstPersonTransform(firstPersonTransform):
     
     return viewMatrix
 
-def getViewMatrixFromViewAxisAndPosition(x, y, z, position):
+def getViewMatrixFromViewAxisAndPosition(right, up, forward, position):
     """
     For IW/COD series
     """
-    right = x
-    up = y
-    forward = z
-
     viewMatrix = Matrix44()
     
     viewMatrix.set(0, 0, right.x)

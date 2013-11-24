@@ -137,3 +137,25 @@ class Vector4(object):
     def distanceTo(self, other):
         return (self - other).length()
         
+
+class Vector2D(object):
+    
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        
+    def multToMat(self, mat):
+        newX = self.x * mat.get(0, 0) + self.y * mat.get(1, 0)
+        newY = self.x * mat.get(1, 0) + self.y * mat.get(1, 1)
+        return Vector2D(newX, newY)
+    
+    def multByMat(self, mat):
+        newX = self.x * mat.get(0, 0) + self.y * mat.get(0, 1)
+        newY = self.x * mat.get(1, 0) + self.y * mat.get(1, 1)
+        return Vector2D(newX, newY)
+    
+    def __sub__(self, other):
+        return Vector2D(self.x-other.x, self.y-other.y)
+    
+    def __str__(self):
+        return "Vec2D<%.03f, %.03f>" % (self.x, self.y)

@@ -37,57 +37,63 @@ def drawSoldiers(hDc, dataContainer, globalLock):
     # =====================================================
     
     # ============== initialize the offview esp ================
-    
+    sizeX, sizeY = 230, 135
+    hPenESP = win32gui.CreatePen(win32con.PS_SOLID, 1, COLOR_RED)
+    hPenRect = win32gui.CreatePen(win32con.PS_SOLID, 2, COLOR_BLUE)
+    win32gui.SelectObject(hDc, hPenRect)
+    win32gui.Rectangle(hDc, 0, 0, 460, 270)
+    drawCrossHair(hDc, 230, 135, size=5, lineWidth=2, color=COLOR_BLUE)
     # ==========================================================
     
     if dataContainer.isInGame != 0x4000:
         return
     
-    if dataContainer.viewMatrix == None:
-        return
-    
     # get the view properties
     globalLock.acquire()
-    viewMatrix = dataContainer.viewMatrix.copy()
     viewOrigin = dataContainer.viewOrigin.copy()
-    viewForwardVec = dataContainer.viewForwardVec.copy()
+    viewAxisX = dataContainer.viewAxisX.copy()
+    viewAxisY = dataContainer.viewAxisY.copy()
+    viewAxisZ = dataContainer.viewAxisZ.copy()
     fovX = dataContainer.fovX
     fovY = dataContainer.fovY
     globalLock.release()
     
-    # get projection matrix
-    #projM = getProjectionMatrix(0.06, 10000.0, fovX, fovY)
-    
+    win32gui.SelectObject(hDc, hPenESP)
     for i in range(dataContainer.soldiers.qsize()):
         soldier = dataContainer.soldiers.get()
         if not soldier.isValid():
             continue
-        #distanceToViewOrigin = viewOrigin.distanceTo(soldier.posVec4)
-        hPen = win32gui.CreatePen(win32con.PS_SOLID, 2, COLOR_RED)
-        win32gui.SelectObject(hDc, hPen)
-        posV = viewOrigin - soldier.posVec4#.multToMat(viewMatrix)
-        posV.w = 1.0
-        #posVP = posV.multToMat(projM)
         
-        if posV.w > 0.001:
-            # =========== draw soldier minimap spot ===========
-            # calculate the planar coord while compensate for the viewing angle
-            dx = posV.x / posV.w
-            #cosA = viewForwardVec.dotProduct(vector.Vector4(viewForwardVec.x, 0.0, viewForwardVec.z, 0.0).normalize())
-            dy = posV.z / posV.w# / abs(cosA)
-            # limit the drawing to the defined minimap region
-            dx = int(dx / 25.0 + centerX)
-            dy = int(dy / 25.0 + centerY)
-            if dx < left: dx = left
-            if dx > right:dx = right
-            if dy < top : dy = top
-            if dy > bottom:dy = bottom
-            # draw spot
-            hPen = win32gui.CreatePen(win32con.PS_SOLID, 2, COLOR_RED)
-            win32gui.SelectObject(hDc, hPen)
-            win32gui.Rectangle(hDc, dx, dy, dx+2, dy+2)
-            # =================================================
-    
+        headPos = soldier.posVec4.copy()
+        headPos.z += 60.0
+        
+        distance = (headPos - viewOrigin).length()/10
+        
+        feetCoords = worldToScreen(fovX, fovY, sizeX, sizeY, viewAxisX, viewAxisY, viewAxisZ, viewOrigin, soldier.posVec4)
+        if not feetCoords:
+            continue
+        headCoords = worldToScreen(fovX, fovY, sizeX, sizeY, viewAxisX, viewAxisY, viewAxisZ, viewOrigin, headPos)
+        if not headCoords:
+            continue
+        feetX, feetY, miniX, miniY = feetCoords
+        headX, headY, _p, _q = headCoords
+        height = headY - feetY
+        width = height / 3
+        
+        # esp
+        win32gui.Rectangle(hDc, headX-width/2, headY, feetX+width/2, feetY)
+        
+        # mini map
+        dx = miniX + centerX
+        dy = miniY + centerY
+        if dx < left: dx = left
+        if dx > right:dx = right
+        if dy < top : dy = top
+        if dy > bottom:dy = bottom
+        win32gui.Rectangle(hDc, dx, dy, dx+4, dy+4)
+        
+        
+        
 
 def getProjectionMatrix(nz, fz, fovH, fovV):
     w = 1.0 / math.tan( fovH*0.5 )
@@ -100,3 +106,36 @@ def getProjectionMatrix(nz, fz, fovH, fovV):
     mat.set(3, 2, -1*q*nz)
     mat.set(2, 3, -1.0)
     return mat
+
+
+def worldToScreenTransform(viewAxisX, viewAxisY, viewAxisZ, origin, target):
+    """
+    given the three view axis and two vectors, return the screen space transform 
+    corresponding to target's world transform
+    
+    @param origin: viewport origin, ie. the player position
+    @type  origin: L{EHF.libs.ehfmaths.VECTOR}
+    
+    @param target: the world space transform of the object of interests
+    @type  target: L{EHF.libs.ehfmaths.VECTOR}
+    
+    @return: screen space transform
+    @rtype : L{EHF.libs.ehfmaths.VECTOR}
+    """
+    delta = (target - origin).normalize()
+    delta.w = 1.0
+    scrTransform = vector.Vector4()
+    scrTransform.x = delta.dotProduct(viewAxisY)
+    scrTransform.y = delta.dotProduct(viewAxisZ)
+    scrTransform.z = delta.dotProduct(viewAxisX)
+    scrTransform.w = 1.0
+    return scrTransform
+
+
+def worldToScreen(fovX, fovY, scrCenterX, scrCenterY, viewAxisX, viewAxisY, viewAxisZ, origin, target):
+    scrTransform = worldToScreenTransform(viewAxisX, viewAxisY, viewAxisZ, origin, target)
+    if scrTransform.z < 0.1:
+        return None
+    x = scrCenterX * (1 - (scrTransform.x / fovX / scrTransform.z))
+    y = scrCenterY * (1 - (scrTransform.y / fovY / scrTransform.z))
+    return int(x), int(y), -int(scrTransform.x*100), -int(scrTransform.z*100)

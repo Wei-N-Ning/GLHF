@@ -24,7 +24,7 @@ class CODGhostApplication(base.BaseApplication):
         self.cfg.windowHeight = 900
         # for ex window
         self.cfg.windowLeft = 1460
-        self.cfg.windowRight = 1920
+        self.cfg.windowRight = 460
         self.cfg.windowTop = 0
         self.cfg.windowBottom = 900
 

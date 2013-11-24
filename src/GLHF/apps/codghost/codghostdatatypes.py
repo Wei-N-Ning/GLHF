@@ -99,7 +99,8 @@ class ViewAngles(ctypes.Structure):
     _fields_ = [("x", ctypes.c_float),
                 ("y", ctypes.c_float),
                 ("z", ctypes.c_float)]
-    size = 0x4 * 3
+    def getSize(self):
+        return 0x4 * 3
     def debugPrint(self):
         print "I:%.03f, II:%.03f, III:%.04f" % (self.x, self.y, self.z)
     
@@ -157,15 +158,22 @@ class DataContainer(object):
         self.viewMatrix = None
         self.minimapRotationMatrix = None
         
+        self.viewAxisX = None
+        self.viewAxisY = None
+        self.viewAxisZ = None
+        
         self.viewOrigin = None
         self.viewForwardVec = None
         
-        self.viewAngleI = 0.0
-        self.viewAngleII = 0.0
-        self.viewAngleIII = 0.0
+        # corresponding to viewAngles[0-2]
+        # yaw being the important one for minimap
+        self.yaw = 0.0
+        self.pitch = 0.0
+        self.roll = 0.0
         
         self.localPlayer = Soldier()
         
         self.soldiers = Queue.Queue(maxsize=64)
-
+        
+        
 

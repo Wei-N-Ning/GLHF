@@ -1,4 +1,4 @@
-import sys
+import math
 import time
 
 from GLHF.libs.memory import rpm
@@ -26,6 +26,8 @@ class CODGhostDataFeeder(object):
         self.bufferEntityArraySize = self.bufferEntityArray.getSize()
         self.bufferEntityNameArray = codghostdatatypes.EntityNameArray()
         self.bufferEntityNameArraySize = self.bufferEntityNameArray.getSize()
+        self.bufferViewAngles = codghostdatatypes.ViewAngles()
+        self.bufferViewAnglesSize = self.bufferViewAngles.getSize()
         
     def initializeRPM(self, hProcess):
         self.rpm = rpm.RPM(hProcess)
@@ -57,41 +59,25 @@ class CODGhostDataFeeder(object):
         self.ctn.isInGame = self.rpm.readInt(self.cfg.IsInGame)
                 
     def _populateViewProperties(self):
-        """
-        Be careful! The three component of RefDef.viewAxis are:
-        1st: pointing to positive Y
-        2nd: pointing to negative X
-        3rd: pointing to positive Z
-        
-        axisX(right) = -1 * 2nd
-        axisY(up) = 1st
-        axisZ(forward) = 3rd
-        
-        Be careful #2:
-        y,z in COD appears to be swapped!
-        y: forward
-        z: up
-        """
         self.rpm.read(self.cfg.RefdefAddress, self.bufferRefDef, self.bufferRefDefSize)
         self.ctn.fovX = self.bufferRefDef.fov_x
         self.ctn.fovY = self.bufferRefDef.fov_y
         
         self.ctn.viewOrigin = self.bufferRefDef.viewOrigin.toPyVector4Point()
-        self.ctn.viewOrigin.swapYZ()
         
-        axisX = self.bufferRefDef.viewAxis[1].toPyVector4Direction().multScalar(-1.0)
-        axisY = self.bufferRefDef.viewAxis[0].toPyVector4Direction()
-        axisZ = self.bufferRefDef.viewAxis[2].toPyVector4Direction()
-        
-        self.ctn.viewMatrix = matrix.getViewMatrixFromViewAxisAndPosition(axisX, axisY, axisZ, self.ctn.viewOrigin)
-        self.ctn.viewForwardVec = axisZ
+        # see quake3 source code: ..code/cgame/cg_marks.c
+        self.ctn.viewAxisX = self.bufferRefDef.viewAxis[0].toPyVector4Direction()
+        self.ctn.viewAxisY = self.bufferRefDef.viewAxis[1].toPyVector4Direction()
+        self.ctn.viewAxisZ = self.bufferRefDef.viewAxis[2].toPyVector4Direction()
         
         # debug print-----------------------------
         #self.bufferRefDef.debugPrint()
-        #print "x:", axisX
-        #print "y:", axisY
-        #print "z:", axisZ
+        #print "---------------------"
+        #print "right:", rightVec
+        #print "up:", upVec
+        #print "forward:", forwardVec
         #print self.ctn.viewOrigin
+        #print self.ctn.viewAngleX, self.ctn.viewAngleY, self.ctn.viewAngleZ
         # ----------------------------------------
         
     def _populateSoldiers(self):
@@ -101,8 +87,6 @@ class CODGhostDataFeeder(object):
             return
         
         # get the entity name array (see the datatype module for how the array is defined)
-        # char** names[0x70]
-        # [self.bufferEntityNameArray.entityNames[i].name for i in range(entityCount)]
         self.rpm.read(self.cfg.PlayerNames, self.bufferEntityNameArray, self.bufferEntityNameArraySize)
         
         # get the local client number (the player itself)
@@ -125,7 +109,6 @@ class CODGhostDataFeeder(object):
             soldier.clientEntityAddress = self.cfg.EntityAddress + codghostdatatypes.Entity.size * i
             soldier.name = self.bufferEntityNameArray.entityNames[i].name
             soldier.posVec4 = self.bufferEntityArray.entities[i].lerpOrigin.toPyVector4Point()
-            soldier.posVec4.swapYZ()
             soldier.teamId = self.rpm.readInt(self.cfg.ClientInfo + 0x5D8 * i + 0xC)
             
             # debug print-----------------------
@@ -143,4 +126,5 @@ class CODGhostDataFeeder(object):
             if soldier.teamId == localPlayerTeamId:
                 continue
             self.ctn.soldiers.put(soldier)
-        
+
+
