@@ -204,6 +204,13 @@ class BF4DataFeeder(object):
         soldier.velVec4 = self.rpm.readVec4Direction(repCon + 0x50)
         # stance: 0-stand, 1-nail, 2-crouch
         soldier.stance = self.rpm.readUInt(repCon + 0x80)
+        
+        # a sort of hack here, use the stance to offset the position y value
+        if soldier.stance == 0:
+            soldier.posVec4.y += 1.3
+        elif soldier.stance == 1:
+            soldier.posVec4.y += 0.8
+        
         # =================================================        
         
         return soldier
@@ -217,14 +224,22 @@ class BF4DataFeeder(object):
         """
         # the block contains the vehicle position etc.
         vehicleControl = self.rpm.readUInt64(vehicleDataBlock + 0x238)
+        vehicleSoldierBlock = self.rpm.readUInt64(vehicleControl + 0xA0)
         soldier = bf4datatypes.Soldier()
         soldier.address = soldierAddress
         soldier.name = "_veh_" #@TODO: rpm the vehicle id then the mapped type
         soldier.isVehicle = True
-        #soldier.health = 999.0 #@TODO: rpm this
-        #soldier.posVec4 = self.rpm.readVec4Position(vehicleControl + 0xA0)
-        #soldier.posVec4.w = 1.0
-        #soldier.velVec4 = self.rpm.readVec4Direction(vehicleControl + 0x280)
+        
+        #########
+        cse = self.rpm.readUInt64(soldierAddress + 0xDC0)
+        if cse == 0x0:
+            return None
+        healthCompoundAddress = self.rpm.readUInt64(cse + 0x140)
+        #########
+        
+        soldier.health = self.rpm.readFloat(healthCompoundAddress + 0x38)
+        soldier.posVec4 = self.rpm.readVec4Point(vehicleSoldierBlock + 0x30)
+        soldier.velVec4 = self.rpm.readVec4Direction(vehicleControl + 0x280)
         return soldier
         
         
