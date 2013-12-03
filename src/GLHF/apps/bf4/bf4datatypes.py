@@ -2,6 +2,21 @@ import Queue
 
 
 class Soldier(object):
+
+    vehicleIdNameMap = {
+        32: "MRAP",
+        35: "UH-1Y VENOM",
+        75: "PWC",
+        78: "RCB",
+        81: "Z-9 HAITUN",
+        82: "Tank",
+        117:"Tank", # ++
+        90: "LAV-25",
+        120:"Z-10W",
+        143:"ZBO-09",
+        148:"AH-1Z VIPER",
+        154:"ZFB-05"
+    }
     
     def __init__(self):
         self.address = 0x0
@@ -21,7 +36,11 @@ class Soldier(object):
         self.teamId = 0x0
         
         self.isVehicle = False
-        
+    
+    def vehicleIdToName(self, vehicleId):
+
+        return ''
+    
     def __eq__(self, other):
         if isinstance(other, Soldier):
             return self.address == other.address

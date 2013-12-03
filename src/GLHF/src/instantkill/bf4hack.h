@@ -1,0 +1,1 @@
+void RunPatchingLogic(void);

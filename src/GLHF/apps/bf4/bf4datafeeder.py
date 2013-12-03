@@ -59,20 +59,6 @@ logger = logging.getLogger(__name__)
 
 class BF4DataFeeder(object):
     
-    vehicleIdNameMap = {
-        32: "MRAP",
-        35: "UH-1Y VENOM",
-        75: "PWC",
-        78: "RCB",
-        81: "Z-9 HAITUN",
-        82: "Tank",
-        90: "LAV-25",
-        120:"Z-10W",
-        143:"ZBO-09",
-        148:"AH-1Z VIPER",
-        154:"ZFB-05"
-    }
-        
     def __init__(self, app):
         self.ctn = app.ctn
         self.cfg = app.cfg
@@ -212,7 +198,27 @@ class BF4DataFeeder(object):
             soldier.posVec4.y += 0.8
         
         # =================================================        
-        
+        # test weapon no recoil and no spread addresses
+#        soldierWeaponComponent = self.rpm.readUInt64(cse + 0x550)
+#        activeSlot = self.rpm.readByte(soldierWeaponComponent + 0x09A8)
+#        weaponArrayBase = self.rpm.readUInt64(soldierWeaponComponent + 0x07A0)
+#        weaponAddress = weaponArrayBase + activeSlot * 8
+#        clientSoldierWeapon = self.rpm.readUInt64(weaponAddress)
+#        weaponFiring = self.rpm.readUInt64(clientSoldierWeapon + 0x49C8)
+#        sway = self.rpm.readUInt64(weaponFiring + 0x0078)
+#        print "0x%X" % sway
+#        if sway and sway > 0x10000000 and sway < 0xF0000000:
+#            """
+#            float m_deviationPitch; //0x0130 
+#            float m_deviationYaw; //0x0134 
+#            float m_deviationRoll; //0x0138 
+#            """
+#            print "sway: 0x%X" % sway
+#            print self.rpm.readFloat(sway + 0x130)
+#            print self.rpm.readFloat(sway + 0x134)
+#            print self.rpm.readFloat(sway + 0x138)
+        # =================================================
+            
         return soldier
     
     def _readVehicle(self, soldierAddress, vehicleDataBlock):
